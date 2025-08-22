@@ -13,10 +13,7 @@ const PAGE_URL =
   'https://www.mantine-react-table.dev/iframe.html?args=&id=features-detail-panel-examples--detail-panel-enabled&viewMode=story';
 // If you prefer a different story, swap the URL above accordingly.
 
-/** Pick the right root for queries:
- *  - full Storybook UI → frameLocator for preview iframe
- *  - iframe canvas URL → the page itself
- */
+
 async function canvas(page) {
   const preview = page.locator('iframe[title="storybook-preview-iframe"]');
   if (await preview.count()) {
@@ -74,7 +71,7 @@ async function waitForAnyVisibleInTable(root, selector, timeout = 7000) {
     .toBe(true);
 }
 
-/** Read the total matched rows from status text like "1–10 of 2,000". Returns a number or null. */
+/** Read the total matched rows from status text like "1–10 of N". Returns a number or null. */
 async function readStatusTotal(root) {
   const texts = await root.locator('.mantine-Text-root').allInnerTexts().catch(() => []);
   for (const raw of texts) {
@@ -115,10 +112,9 @@ async function findFirstNameSortControlAndIndex(root) {
   return null;
 }
 
-/** Row-level expand control for the first data row (robust to toolbar "Expand all") */
 async function firstRowExpandControl(root) {
   const firstRow = table(root).locator('tbody tr').first();
-  // Prefer explicit labels/titles
+
   let btn = firstRow.locator('button[aria-label*="expand" i]').first();
   if (!(await btn.count())) btn = firstRow.locator('button[aria-label*="detail" i]').first();
   if (!(await btn.count())) btn = firstRow.locator('button[title*="expand" i], button[title*="detail" i]').first();
