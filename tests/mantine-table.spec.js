@@ -8,11 +8,10 @@ test.use({
   video: 'retain-on-failure',
 });
 
-// 🔗 Full Storybook UI (table is in the preview iframe)
+// 🔗 Story: Detail Panel — Enabled
 const PAGE_URL =
-  'https://www.mantine-react-table.dev/?path=/story/prop-playground--default';
-// If you prefer the iframe canvas directly, swap to:
-// const PAGE_URL = 'https://www.mantine-react-table.dev/iframe.html?id=features-aggregation-examples--aggregation&viewMode=story';
+  'https://www.mantine-react-table.dev/iframe.html?args=&id=features-detail-panel-examples--detail-panel-enabled&viewMode=story';
+// If you prefer a different story, swap the URL above accordingly.
 
 /** Pick the right root for queries:
  *  - full Storybook UI → frameLocator for preview iframe
@@ -116,6 +115,26 @@ async function findFirstNameSortControlAndIndex(root) {
   return null;
 }
 
+/** Row-level expand control for the first data row (robust to toolbar "Expand all") */
+async function firstRowExpandControl(root) {
+  const firstRow = table(root).locator('tbody tr').first();
+  // Prefer explicit labels/titles
+  let btn = firstRow.locator('button[aria-label*="expand" i]').first();
+  if (!(await btn.count())) btn = firstRow.locator('button[aria-label*="detail" i]').first();
+  if (!(await btn.count())) btn = firstRow.locator('button[title*="expand" i], button[title*="detail" i]').first();
+  if (!(await btn.count())) btn = firstRow.getByRole('button', { name: /expand|detail/i }).first();
+  if (!(await btn.count())) btn = firstRow.locator('button').first(); // last resort
+  return btn;
+}
+
+/** Detail panel cells — count only the VISIBLE ones (aria-hidden="false") */
+function detailPanelCells(root) {
+  return table(root).locator(
+    'tbody td.mantine-TableBodyCell-DetailPanel:has([aria-hidden="false"]), ' +
+      'tbody td:has([aria-hidden="false"]):has-text("City:")'
+  );
+}
+
 // ---------- beforeEach ----------
 test.beforeEach(async ({ page }) => {
   await page.goto(PAGE_URL, { waitUntil: 'domcontentloaded' });
@@ -135,16 +154,13 @@ test('page loads and table is visible', async ({ page }) => {
 test('global search reduces total (status "1–10 of N") for "ali" and restores when cleared', async ({ page }) => {
   const root = await canvas(page);
 
-  // Open search UI
   const searchToggle = root.getByRole('button', { name: /show\/hide search/i });
   await expect(searchToggle).toBeVisible();
   await searchToggle.click();
 
-  // Locate the search input (may be hidden initially; attached is enough)
   const input = root.locator('input[placeholder*="Search" i]').first();
   await input.waitFor({ state: 'attached' });
 
-  // Baseline total from status text; if missing, fall back to row count
   let baseTotal = await readStatusTotal(root);
   let useStatus = true;
   if (baseTotal === null) {
@@ -153,7 +169,6 @@ test('global search reduces total (status "1–10 of N") for "ali" and restores 
   }
   expect(baseTotal).toBeGreaterThan(0);
 
-  // Type "ali" and submit (handle libs that require Enter/blur)
   await input.fill('ali', { force: true });
   await input.press('Enter');
   await input.blur();
@@ -174,7 +189,6 @@ test('global search reduces total (status "1–10 of N") for "ali" and restores 
       .toBeLessThan(baseTotal);
   }
 
-  // Clear and expect total/rows to restore to baseline
   await input.fill('', { force: true });
   await input.press('Enter');
   await input.blur();
@@ -202,8 +216,6 @@ test('clicking "Show/Hide filters" reveals header filter inputs', async ({ page 
   const filtersToggle = root.getByRole('button', { name: /show\/hide filters/i });
   await expect(filtersToggle).toBeVisible();
   await filtersToggle.click();
-
-  // Wait for any visible THEAD input in the table (not just attached)
   await waitForAnyVisibleInTable(root, 'thead input');
 });
 
@@ -229,7 +241,7 @@ test('sorting on "First Name": click1 sorts, click2 flips, click3 restores OR ke
       .not.toBe(null);
 
     const vals1 = await columnValues(root, index);
-    expect(arraysEqual(vals1, base)).toBe(false); // order changed
+    expect(arraysEqual(vals1, base)).toBe(false);
   }
 
   // --- Click #2: direction flips
@@ -275,4 +287,35 @@ test('sorting on "First Name": click1 sorts, click2 flips, click3 restores OR ke
         .not.toBe(null);
     }
   }
+});
+
+// 4) Detail Panel: first-row expand toggles a **visible** panel cell in the tbody
+test('detail panel toggles open/closed for the first row', async ({ page }) => {
+  const root = await canvas(page);
+
+  // Start: no visible detail panels
+  await expect(detailPanelCells(root)).toHaveCount(0);
+
+  // Find a ROW-LEVEL expand control (scoped to first data row, not the toolbar)
+  const expandBtn = await firstRowExpandControl(root);
+  await expect(expandBtn).toBeVisible();
+
+  // Open
+  await expandBtn.click();
+  await expect
+    .poll(async () => detailPanelCells(root).count(), {
+      timeout: 6000,
+      message: 'Expected one visible detail panel cell after expanding',
+    })
+    .toBe(1);
+
+  // Close (re-resolve in case of re-render)
+  const expandBtnAgain = await firstRowExpandControl(root);
+  await expandBtnAgain.click();
+  await expect
+    .poll(async () => detailPanelCells(root).count(), {
+      timeout: 6000,
+      message: 'Expected zero visible detail panel cells after collapsing',
+    })
+    .toBe(0);
 });

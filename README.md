@@ -18,11 +18,15 @@ npx playwright show-report
 
 ## What’s tested
 
-1. **Page loads** – table renders and has rows.
-2. **Search toggle** – clicking **“Show/Hide search”** makes a search box appear.
-3. **Filters toggle** – clicking **“Show/Hide filters”** makes header filter inputs appear.
-4. **Sorting (First Name)** – click the sort control **5 times**; after **each** click the test detects whether the column is **ascending** or **descending** and asserts the direction **flips** every time (asc ↔︎ desc).
-5. **Name search** – types **`ali`** in the global search and verifies the total count (the `1–10 of N` status, or visible row count as a fallback) **decreases**, then **restores** after clearing.
+### What’s tested
+
+* **Page loads** – table renders and has rows.
+* **Search toggle** – clicking **“Show/Hide search”** shows the global search box.
+* **Filters toggle** – clicking **“Show/Hide filters”** shows header filter inputs.
+* **Sorting (First Name)** – verifies sort behavior across clicks (handles both two-state flip and tri-state restore; asserts direction changes appropriately).
+* **Name search** – types **`ali`** in the global search and verifies the total count (the “1–10 of N” status, or visible row count as a fallback) **decreases**, then **restores** after clearing.
+* **Detail panel** – expands the first row’s detail panel and asserts a visible panel appears, then collapses and asserts it disappears.
+
 
 ## Target page
 
