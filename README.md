@@ -5,8 +5,11 @@ Playwright tests for a Mantine React Table story.
 ## Setup
 
 npm ci
+
 npx playwright install --with-deps
+
 npx playwright test
+
 npx playwright show-report
 
 
